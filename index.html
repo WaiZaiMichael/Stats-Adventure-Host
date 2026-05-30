@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>📊 統計學大冒險 - 教師/主持大螢幕 📐</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f4f8; color: #2c3e50; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .math-card { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; }
+        .player-badge { font-size: 1.1rem; padding: 8px 15px; margin: 5px; border-radius: 20px; display: inline-block; }
+        .alive { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .eliminated { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; text-decoration: line-through; }
+        #timer { font-size: 2.5rem; font-weight: bold; color: #dc3545; animation: blink 1s infinite alternate; }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.7; } }
+        .rule-box { background-color: #e9ecef; border-left: 5px solid #0d6efd; padding: 15px; font-size: 0.95rem; }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://unpkg.com/@sgratzl/chartjs-chart-boxplot@3.10.0/build/index.umd.min.js"></script>
+</head>
+<body>
+
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="math-card text-center bg-primary text-white py-3">
+                <h1 class="fw-bold">📐 統計學大冒險 (Stats Adventure) 📊</h1>
+                <div id="gameStatusText" class="fs-4 mt-2">準備開始遊戲</div>
+            </div>
+
+            <div class="math-card">
+                <h4 class="fw-bold text-primary">⚙️ 本回合規則設定 (請在開始前勾選)</h4>
+                <div class="row g-3 my-2 text-start">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">平均數乘數 (a值)：</label>
+                        <select id="aValueSelect" class="form-select">
+                            <option value="0.8">固定為原著的 0.8</option>
+                            <option value="RANDOM">每回合隨機抽出 (0.7 - 1.3)</option>
+                        </select>
+                        <div class="mt-2 fs-5">當前 $a$ 值 = <span id="currentAValueDisplay" class="badge bg-warning text-dark">0.8</span></div>
+                    </div>
+                    <div class="col-md-6 text-start">
+                        <label class="form-label fw-bold">額外免扣分條件：</label>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_mean" checked disabled><label class="form-check-label">接近 Mean × a (必選)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_median"><label class="form-check-label">接近 中位數 (Median)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_lq"><label class="form-check-label">接近 下四分位數 (Lower Quartile)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_uq"><label class="form-check-label">接近 上四分位數 (Upper Quartile)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_range"><label class="form-check-label">接近 範圍 (Range)</label></div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-success btn-lg me-2" onclick="startRound()">🚀 開始新一輪 (60秒)</button>
+                    <button class="btn btn-danger btn-lg" onclick="calculateRound()">⏳ 強制結算本輪</button>
+                    <button class="btn btn-secondary" onclick="resetGame()">重設整場遊戲</button>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="math-card" style="min-height: 400px;">
+                        <h4 class="fw-bold border-bottom pb-2">👥 參賽同學狀態</h4>
+                        <div id="timer" class="my-2">00</div>
+                        <div id="playerList" class="text-start mt-3">等待學生用手機加入...</div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="math-card" style="min-height: 400px;">
+                        <h4 class="fw-bold border-bottom pb-2">📈 本輪統計數據與箱形圖</h4>
+                        <div style="width: 100%; height: 220px; margin: 0 auto;">
+                            <canvas id="boxplotCanvas"></canvas>
+                        </div>
+                        <div id="roundResultReport" class="text-start mt-2 fs-6 overflow-auto" style="max-height: 180px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="math-card text-start h-100">
+                <h3 class="fw-bold text-success border-bottom pb-2">🎮 遊戲玩法說明</h3>
+                <div class="rule-box my-3">
+                    <strong>遊戲規則：</strong><br>
+                    1. 遊戲開始時，所有玩家的分數為 <strong>0 分</strong>。<br>
+                    2. 每回合開始後，玩家需要在 <strong>60 秒</strong>內，從 <strong>0-100</strong> 中選擇一個整數並提交。若時限已到但沒有提交數字，則<strong>預設該玩家提交數字 0</strong>。<br><br>
+                    3. 回合結算後，如果玩家所提交的數字最接近主持人勾選的統計學指標：
+                    <ul>
+                        <li><strong>平均數 × a</strong> (a為0.7至1.3)</li>
+                        <li><strong>中位數 (Median)</strong></li>
+                        <li><strong>上 / 下四分位數</strong></li>
+                        <li><strong>全距/範圍 (Range)</strong></li>
+                    </ul>
+                    則<strong>豁免被扣分</strong>，其他玩家各 <strong>-1 分</strong>。<br><br>
+                    4. ⚠️ <strong>防串通機制：</strong>如果有多於或等於 <strong>4 個人</strong>因為提交了「一模一樣」的數字而獲得免扣分資格，則該數字<strong>宣佈無效</strong>！所有提交該數字的人將**不會**被豁免，直接扣分。<br><br>
+                    5. 當回合結束後，玩家分數達到 <strong>-8 分</strong>，將被淘汰。<br>
+                    6. 🏆 遊戲繼續直至<strong>剩下 4 名或以下</strong>的玩家存活，所有生存者同時勝出！
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyC6r7C3CAN8QnLH7qCRy3gnBIRTPMEWNPM",
+  authDomain: "alice-borderland-k.firebaseapp.com",
+  databaseURL: "https://alice-borderland-k-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "alice-borderland-k",
+  storageBucket: "alice-borderland-k.firebasestorage.app",
+  messagingSenderId: "483900403059",
+  appId: "1:483900403059:web:9efab015e2a6478e542906",
+  measurementId: "G-RLFKHK4L4X"
+};
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let countdown;
+    let playersData = {};
+    let chartInstance = null;
+    let currentA = 0.8;
+
+    db.ref('game/players').on('value', (snapshot) => {
+        playersData = snapshot.val() || {};
+        updateDisplay();
+    });
+
+    function updateDisplay() {
+        const listDiv = document.getElementById('playerList');
+        listDiv.innerHTML = "";
+        let aliveCount = 0;
+        let submitCount = 0;
+
+        for (let name in playersData) {
+            let p = playersData[name];
+            let isEliminated = p.score <= -8;
+            let badgeClass = isEliminated ? "player-badge eliminated" : "player-badge alive";
+            let statusText = isEliminated ? "💀 淘汰" : `分數: ${p.score}`;
+            
+            if(!isEliminated) {
+                aliveCount++;
+                if(p.currentMove !== undefined && p.currentMove !== "") {
+                    submitCount++;
+                    statusText += " (✅已提交)";
+                } else {
+                    statusText += " (🤔思考中)";
+                }
+            }
+            listDiv.innerHTML += `<div class="${badgeClass}"><b>${name}</b>: ${statusText}</div> `;
+        }
+        document.getElementById('gameStatusText').innerText = `目前生存人數：${aliveCount} 人 | 已提交：${submitCount} 人`;
+        
+        // 規則5：人數剩下4個或以下，自動觸發遊戲結束
+        if (aliveCount <= 4 && Object.keys(playersData).length > 4) {
+            document.getElementById('gameStatusText').innerText = "🏆 遊戲結束！倖存者勝出！";
+            db.ref('game/status').set('FINISHED');
+            clearInterval(countdown);
+        }
+    }
+
+    function startRound() {
+        // 決定 a 值
+        let aSelect = document.getElementById('aValueSelect').value;
+        if(aSelect === 'RANDOM') {
+            const aOptions = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3];
+            currentA = aOptions[Math.floor(Math.random() * aOptions.length)];
+        } else {
+            currentA = 0.8;
+        }
+        document.getElementById('currentAValueDisplay').innerText = currentA;
+
+        // 收集主持人勾選的條件
+        let conditions = {
+            a: currentA,
+            mean: true,
+            median: document.getElementById('cond_median').checked,
+            lq: document.getElementById('cond_lq').checked,
+            uq: document.getElementById('cond_uq').checked,
+            range: document.getElementById('cond_range').checked
+        };
+
+        db.ref('game/rules').set(conditions);
+        db.ref('game/status').set('RUNNING');
+
+        for (let name in playersData) {
+            if (playersData[name].score > -8) {
+                db.ref(`game/players/${name}/currentMove`).set("");
+            }
+        }
+
+        let timeLeft = 60;
+        document.getElementById('timer').innerText = `⏱️ ${timeLeft}s`;
+        clearInterval(countdown);
+        countdown = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = `⏱️ ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                calculateRound();
+            }
+        }, 1000);
+    }
+
+    // 統計學核心計算函數
+    function calculateRound() {
+        clearInterval(countdown);
+        document.getElementById('timer').innerText = `📊 結算中`;
+        db.ref('game/status').set('CALCULATING');
+
+        let rawNumbers = [];
+        let activePlayers = [];
+
+        for (let name in playersData) {
+            let p = playersData[name];
+            if (p.score > -8) {
+                let num = parseFloat(p.currentMove);
+                if (isNaN(num)) num = 0; // 規則7：時限內沒交，預設為0
+                rawNumbers.push(num);
+                activePlayers.push({ name: name, num: num, exempt: false });
+            }
+        }
+
+        if (activePlayers.length === 0) return;
+
+        // 數值排序以便計算四分位與中位數
+        rawNumbers.sort((a, b) => a - b);
+        
+        // 基礎統計值計算
+        let min = rawNumbers[0];
+        let max = rawNumbers[rawNumbers.length - 1];
+        let range = max - min;
+        
+        let sum = rawNumbers.reduce((a, b) => a + b, 0);
+        let mean = sum / rawNumbers.length;
+        let meanTarget = mean * currentA;
+
+        function getPercentile(data, percentile) {
+            let index = (percentile / 100) * (data.length - 1);
+            if (Math.floor(index) === index) {
+                return data[index];
+            } else {
+                let i = Math.floor(index);
+                let r = index - i;
+                return data[i] * (1 - r) + data[i + 1] * r;
+            }
+        }
+
+        let lq = getPercentile(rawNumbers, 25);
+        let median = getPercentile(rawNumbers, 50);
+        let uq = getPercentile(rawNumbers, 75);
+
+        // 尋找各指標的最接近者
+        let targets = { mean: meanTarget };
+        if(document.getElementById('cond_median').checked) targets.median = median;
+        if(document.getElementById('cond_lq').checked) targets.lq = lq;
+        if(document.getElementById('cond_uq').checked) targets.uq = uq;
+        if(document.getElementById('cond_range').checked) targets.range = range;
+
+        // 記錄哪些數字可以免扣分
+        let exemptNumbers = [];
+
+        for(let key in targets) {
+            let targetVal = targets[key];
+            let minDiff = Math.min(...activePlayers.map(p => Math.abs(p.num - targetVal)));
+            activePlayers.forEach(p => {
+                if (Math.abs(p.num - targetVal) === minDiff) {
+                    exemptNumbers.push(p.num);
+                }
+            });
+        }
+
+        // 規則3：計算每個數字被選中的次數（防作弊）
+        let numberCounts = {};
+        activePlayers.forEach(p => {
+            numberCounts[p.num] = (numberCounts[p.num] || 0) + 1;
+        });
+
+        // 判斷免扣分資格並扣分
+        let reportHtml = `<h5><b>📋 數據統計報告：</b></h5>`;
+        reportHtml += `全體提交數字: [${rawNumbers.join(', ')}]<br>`;
+        reportHtml += `⚫ 最低值: ${min} | 最高值: ${max} | Range: ${range}<br>`;
+        reportHtml += `⚫ Mean: ${mean.toFixed(1)} (×${currentA} = ${meanTarget.toFixed(1)})<br>`;
+        reportHtml += `⚫ 下四分位(LQ): ${lq.toFixed(1)} | 中位數(Med): ${median.toFixed(1)} | 上四分位(UQ): ${uq.toFixed(1)}<br><hr>`;
+
+        activePlayers.forEach(p => {
+            // 如果它在免扣分名單裡，而且該數字少於4個人選
+            if (exemptNumbers.includes(p.num)) {
+                if (numberCounts[p.num] >= 4) {
+                    // 觸發規則3：滿4人相同，無效！
+                    db.ref(`game/players/${p.name}/score`).set(playersData[p.name].score - 1);
+                    reportHtml += `❌ <b>${p.name}</b> 雖然接近指標(${p.num})，但因多於4人重複，免扣分無效，扣 1 分！<br>`;
+                } else {
+                    p.exempt = true;
+                    reportHtml += `⭐ <b>${p.name}</b> 提交 ${p.num}，成功免扣分！<br>`;
+                }
+            } else {
+                db.ref(`game/players/${p.name}/score`).set(playersData[p.name].score - 1);
+            }
+        });
+
+        document.getElementById('roundResultReport').innerHTML = reportHtml;
+        
+        // 繪製箱形圖 (Boxplot)
+        drawBoxPlot(min, lq, median, uq, max, mean);
+    }
+
+    function drawBoxPlot(min, q1, med, q3, max, mean) {
+        if (chartInstance) chartInstance.destroy();
+        const ctx = document.getElementById('boxplotCanvas').getContext('2d');
+        
+        chartInstance = new Chart(ctx, {
+            type: 'boxplot',
+            data: {
+                labels: ['本輪數據分佈'],
+                datasets: [{
+                    label: '箱形圖 (Box Plot)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.5)',
+                    borderColor: '#0d6efd',
+                    borderWidth: 2,
+                    outlierColor: '#999999',
+                    padding: 10,
+                    itemRadius: 3,
+                    data: [{
+                        min: min,
+                        q1: q1,
+                        median: med,
+                        q3: q3,
+                        max: max,
+                        mean: mean
+                    }]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { min: 0, max: 100, title: { display: true, text: '數字 (0 - 100)' } }
+                }
+            }
+        });
+    }
+
+    function resetGame() {
+        if (confirm("確定要重設整場遊戲嗎？")) {
+            db.ref('game').set(null);
+            document.getElementById('roundResultReport').innerHTML = "";
+            if (chartInstance) chartInstance.destroy();
+            document.getElementById('timer').innerText = "00";
+        }
+    }
+</script>
+</body>
+</html>
