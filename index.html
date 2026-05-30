@@ -77,18 +77,8 @@
         </div>
 
         <div class="col-md-4">
-            <div class="math-card text-start h-100">
+            <div class="math-card text-start">
                 <h3 class="fw-bold text-success border-bottom pb-2">🎮 遊戲玩法說明</h3>
-                <div class="mt-4 p-3 bg-white border rounded text-center shadow-sm">
-    <h5 class="fw-bold text-primary">📱 學生手機掃碼加入</h5>
-    <p class="text-muted small">請用手機相機掃描下方 QR Code 進入遊戲會場</p>
-    
-    <img src="qrcode.png" alt="遊戲二維碼" class="img-fluid my-2" style="max-width: 180px; border: 5px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-    
-    <div class="mt-2">
-        <small class="text-secondary text-muted">提示：若無法掃碼，請向老師索取網址</small>
-    </div>
-</div>
                 <div class="rule-box my-3">
                     <strong>遊戲規則：</strong><br>
                     1. 遊戲開始時，所有玩家的分數為 <strong>0 分</strong>。<br>
@@ -106,6 +96,17 @@
                     6. 🏆 遊戲繼續直至<strong>剩下 4 名或以下</strong>的玩家存活，所有生存者同時勝出！
                 </div>
             </div>
+
+            <div class="math-card text-center">
+                <h5 class="fw-bold text-primary">📱 學生手機掃碼加入</h5>
+                <p class="text-muted small">請用手機相機掃描下方 QR Code 進入遊戲會場</p>
+                
+                <img src="qrcode.png" alt="遊戲二維碼" class="img-fluid my-2" style="max-width: 180px; border: 5px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                
+                <div class="mt-2">
+                    <small class="text-secondary text-muted">提示：若無法掃碼，請向老師索取連結</small>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -120,7 +121,7 @@
   messagingSenderId: "483900403059",
   appId: "1:483900403059:web:9efab015e2a6478e542906",
   measurementId: "G-RLFKHK4L4X"
-};
+    };
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -169,7 +170,6 @@
     }
 
     function startRound() {
-        // 決定 a 值
         let aSelect = document.getElementById('aValueSelect').value;
         if(aSelect === 'RANDOM') {
             const aOptions = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3];
@@ -179,7 +179,6 @@
         }
         document.getElementById('currentAValueDisplay').innerText = currentA;
 
-        // 收集主持人勾選的條件
         let conditions = {
             a: currentA,
             mean: true,
@@ -211,7 +210,6 @@
         }, 1000);
     }
 
-    // 統計學核心計算函數
     function calculateRound() {
         clearInterval(countdown);
         document.getElementById('timer').innerText = `📊 結算中`;
@@ -232,10 +230,8 @@
 
         if (activePlayers.length === 0) return;
 
-        // 數值排序以便計算四分位與中位數
         rawNumbers.sort((a, b) => a - b);
         
-        // 基礎統計值計算
         let min = rawNumbers[0];
         let max = rawNumbers[rawNumbers.length - 1];
         let range = max - min;
@@ -259,14 +255,12 @@
         let median = getPercentile(rawNumbers, 50);
         let uq = getPercentile(rawNumbers, 75);
 
-        // 尋找各指標的最接近者
         let targets = { mean: meanTarget };
         if(document.getElementById('cond_median').checked) targets.median = median;
         if(document.getElementById('cond_lq').checked) targets.lq = lq;
         if(document.getElementById('cond_uq').checked) targets.uq = uq;
         if(document.getElementById('cond_range').checked) targets.range = range;
 
-        // 記錄哪些數字可以免扣分
         let exemptNumbers = [];
 
         for(let key in targets) {
@@ -279,13 +273,11 @@
             });
         }
 
-        // 規則3：計算每個數字被選中的次數（防作弊）
         let numberCounts = {};
         activePlayers.forEach(p => {
             numberCounts[p.num] = (numberCounts[p.num] || 0) + 1;
         });
 
-        // 判斷免扣分資格並扣分
         let reportHtml = `<h5><b>📋 數據統計報告：</b></h5>`;
         reportHtml += `全體提交數字: [${rawNumbers.join(', ')}]<br>`;
         reportHtml += `⚫ 最低值: ${min} | 最高值: ${max} | Range: ${range}<br>`;
@@ -293,10 +285,8 @@
         reportHtml += `⚫ 下四分位(LQ): ${lq.toFixed(1)} | 中位數(Med): ${median.toFixed(1)} | 上四分位(UQ): ${uq.toFixed(1)}<br><hr>`;
 
         activePlayers.forEach(p => {
-            // 如果它在免扣分名單裡，而且該數字少於4個人選
             if (exemptNumbers.includes(p.num)) {
                 if (numberCounts[p.num] >= 4) {
-                    // 觸發規則3：滿4人相同，無效！
                     db.ref(`game/players/${p.name}/score`).set(playersData[p.name].score - 1);
                     reportHtml += `❌ <b>${p.name}</b> 雖然接近指標(${p.num})，但因多於4人重複，免扣分無效，扣 1 分！<br>`;
                 } else {
@@ -309,8 +299,6 @@
         });
 
         document.getElementById('roundResultReport').innerHTML = reportHtml;
-        
-        // 繪製箱形圖 (Boxplot)
         drawBoxPlot(min, lq, median, uq, max, mean);
     }
 
