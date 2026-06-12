@@ -36,13 +36,13 @@
                         <label class="form-label fw-bold">平均數乘數 (a值)：</label>
                         <select id="aValueSelect" class="form-select">
                             <option value="0.8">固定為原著的 0.8</option>
-                            <option value="RANDOM">每回合隨機抽出 (0.7 - 1.3)</option>
+                            <option value="RANDOM">每回合隨機抽出 (0.7, 0.8, 0.9, 1.1, 1.2, 1.3)</option>
                         </select>
                         <div class="mt-2 fs-5">當前 $a$ 值 = <span id="currentAValueDisplay" class="badge bg-warning text-dark">0.8</span></div>
                     </div>
                     <div class="col-md-6 text-start">
                         <label class="form-label fw-bold">額外免扣分條件：</label>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_mean" checked disabled><label class="form-check-label">接近 Mean × a (必選)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_mean" checked><label class="form-check-label">接近 Mean × a</label></div>
                         <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_median"><label class="form-check-label">接近 中位數 (Median)</label></div>
                         <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_lq"><label class="form-check-label">接近 下四分位數 (Lower Quartile)</label></div>
                         <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_uq"><label class="form-check-label">接近 上四分位數 (Upper Quartile)</label></div>
@@ -85,7 +85,7 @@
                     2. 每回合開始後，玩家需要在 <strong>60 秒</strong>內，從 <strong>0-100</strong> 中選擇一個整數並提交。若時限已到但沒有提交數字，則<strong>預設該玩家提交數字 0</strong>。<br><br>
                     3. 回合結算後，如果玩家所提交的數字最接近主持人勾選的統計學指標：
                     <ul>
-                        <li><strong>平均數 × a</strong> (a為0.7至1.3)</li>
+                        <li><strong>平均數 × a</strong> (a為0.7至1.3，不含1.0)</li>
                         <li><strong>中位數 (Median)</strong></li>
                         <li><strong>上 / 下四分位數</strong></li>
                         <li><strong>全距/範圍 (Range)</strong></li>
@@ -112,16 +112,17 @@
 </div>
 
 <script>
+    // 🔴 請在這裡替換成你自己的 Firebase Config 數據！
     const firebaseConfig = {
-  apiKey: "AIzaSyC6r7C3CAN8QnLH7qCRy3gnBIRTPMEWNPM",
-  authDomain: "alice-borderland-k.firebaseapp.com",
-  databaseURL: "https://alice-borderland-k-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "alice-borderland-k",
-  storageBucket: "alice-borderland-k.firebasestorage.app",
-  messagingSenderId: "483900403059",
-  appId: "1:483900403059:web:9efab015e2a6478e542906",
-  measurementId: "G-RLFKHK4L4X"
-    };
+        apiKey: "AIzaSyC6r7C3CAN8QnLH7qCRy3gnBIRTPMEWNPM",
+        authDomain: "alice-borderland-k.firebaseapp.com",
+        databaseURL: "https://alice-borderland-k-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "alice-borderland-k",
+        storageBucket: "alice-borderland-k.firebasestorage.app",
+        messagingSenderId: "483900403059",
+        appId: "1:483900403059:web:9efab015e2a6478e542906",
+        measurementId: "G-RLFKHK4L4X"
+        };
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -161,7 +162,6 @@
         }
         document.getElementById('gameStatusText').innerText = `目前生存人數：${aliveCount} 人 | 已提交：${submitCount} 人`;
         
-        // 規則5：人數剩下4個或以下，自動觸發遊戲結束
         if (aliveCount <= 4 && Object.keys(playersData).length > 4) {
             document.getElementById('gameStatusText').innerText = "🏆 遊戲結束！倖存者勝出！";
             db.ref('game/status').set('FINISHED');
@@ -172,7 +172,8 @@
     function startRound() {
         let aSelect = document.getElementById('aValueSelect').value;
         if(aSelect === 'RANDOM') {
-            const aOptions = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3];
+            // 剔除了 1.0，剩下六個可能的值
+            const aOptions = [0.7, 0.8, 0.9, 1.1, 1.2, 1.3];
             currentA = aOptions[Math.floor(Math.random() * aOptions.length)];
         } else {
             currentA = 0.8;
@@ -181,7 +182,7 @@
 
         let conditions = {
             a: currentA,
-            mean: true,
+            mean: document.getElementById('cond_mean').checked,
             median: document.getElementById('cond_median').checked,
             lq: document.getElementById('cond_lq').checked,
             uq: document.getElementById('cond_uq').checked,
@@ -210,6 +211,18 @@
         }, 1000);
     }
 
+    // 中學課本標準中位數計算函數
+    function calculateMedianOfArray(arr) {
+        if (arr.length === 0) return 0;
+        let len = arr.length;
+        let mid = Math.floor(len / 2);
+        if (len % 2 !== 0) {
+            return arr[mid];
+        } else {
+            return (arr[mid - 1] + arr[mid]) / 2;
+        }
+    }
+
     function calculateRound() {
         clearInterval(countdown);
         document.getElementById('timer').innerText = `📊 結算中`;
@@ -222,7 +235,7 @@
             let p = playersData[name];
             if (p.score > -8) {
                 let num = parseFloat(p.currentMove);
-                if (isNaN(num)) num = 0; // 規則7：時限內沒交，預設為0
+                if (isNaN(num)) num = 0;
                 rawNumbers.push(num);
                 activePlayers.push({ name: name, num: num, exempt: false });
             }
@@ -230,6 +243,7 @@
 
         if (activePlayers.length === 0) return;
 
+        // 數值由小到大排序
         rawNumbers.sort((a, b) => a - b);
         
         let min = rawNumbers[0];
@@ -240,39 +254,30 @@
         let mean = sum / rawNumbers.length;
         let meanTarget = mean * currentA;
 
-        function getPercentile(data, percentile) {
-            // 1. Create a copy and sort numerically so we don't mutate the original array
-            const sorted = [...data].sort((a, b) => a - b);
-            const N = sorted.length;
+        // --- 中學課本四分位數計算法演算法開始 ---
+        let median = calculateMedianOfArray(rawNumbers);
+        let lowerHalf = [];
+        let upperHalf = [];
+        let len = rawNumbers.length;
+        let midIndex = Math.floor(len / 2);
 
-            // 2. Calculate rank based on standard textbook statistics: (N + 1) * (P / 100)
-            // We subtract 1 at the end to convert the 1-based statistical rank into a 0-based JS index
-            let rankIndex = ((N + 1) * (percentile / 100)) - 1;
-
-            // 3. If the rank lands exactly on a data point index
-            if (Math.floor(rankIndex) === rankIndex) {
-                // Clamp index to ensure it stays within array boundaries
-                let idx = Math.max(0, Math.min(rankIndex, N - 1));
-                return sorted[idx];
-            } else {
-                // 4. If it lands between two points, take the simple average of those two positions
-                // This directly mimics standard quartile rules for even/odd datasets
-                let lowIdx = Math.floor(rankIndex);
-                let highIdx = Math.ceil(rankIndex);
-
-                // Clamp boundaries
-                lowIdx = Math.max(0, Math.min(lowIdx, N - 1));
-                highIdx = Math.max(0, Math.min(highIdx, N - 1));
-
-                return (sorted[lowIdx] + sorted[highIdx]) / 2;
-            }
+        if (len % 2 !== 0) {
+            // 單數：下半部為中位數左邊所有數，上半部為右邊所有數（不含中位數本身）
+            lowerHalf = rawNumbers.slice(0, midIndex);
+            upperHalf = rawNumbers.slice(midIndex + 1);
+        } else {
+            // 雙數：直接對半切開
+            lowerHalf = rawNumbers.slice(0, midIndex);
+            upperHalf = rawNumbers.slice(midIndex);
         }
 
-        let lq = getPercentile(rawNumbers, 25);
-        let median = getPercentile(rawNumbers, 50);
-        let uq = getPercentile(rawNumbers, 75);
+        let lq = calculateMedianOfArray(lowerHalf);
+        let uq = calculateMedianOfArray(upperHalf);
+        // --- 中學課本四分位數計算法演算法結束 ---
 
-        let targets = { mean: meanTarget };
+        // 根據勾選條件放入標的物件
+        let targets = {};
+        if(document.getElementById('cond_mean').checked) targets.mean = meanTarget;
         if(document.getElementById('cond_median').checked) targets.median = median;
         if(document.getElementById('cond_lq').checked) targets.lq = lq;
         if(document.getElementById('cond_uq').checked) targets.uq = uq;
@@ -298,7 +303,7 @@
         let reportHtml = `<h5><b>📋 數據統計報告：</b></h5>`;
         reportHtml += `全體提交數字: [${rawNumbers.join(', ')}]<br>`;
         reportHtml += `⚫ 最低值: ${min} | 最高值: ${max} | Range: ${range}<br>`;
-        reportHtml += `⚫ Mean: ${mean.toFixed(1)} (×${currentA} = ${meanTarget.toFixed(1)})<br>`;
+        reportHtml += `⚫ Mean: ${mean.toFixed(1)} ${document.getElementById('cond_mean').checked ? `(×${currentA} = ${meanTarget.toFixed(1)})` : '(此指標未啟用)'}<br>`;
         reportHtml += `⚫ 下四分位(LQ): ${lq.toFixed(1)} | 中位數(Med): ${median.toFixed(1)} | 上四分位(UQ): ${uq.toFixed(1)}<br><hr>`;
 
         activePlayers.forEach(p => {
