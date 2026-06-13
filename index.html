@@ -81,7 +81,7 @@
                 <h3 class="fw-bold text-success border-bottom pb-2">🎮 遊戲玩法說明</h3>
                 <div class="rule-box my-3">
                     <strong>遊戲規則：</strong><br>
-                    1. 遊戲開始時，所有玩家的起始分數為 <strong>8 分</strong>。<br>
+                    1. 遊戲開始時，所有玩家的起始生命值為 <strong>8 分</strong>。<br>
                     2. 每回合開始後，玩家需要在 <strong>60 秒</strong>內，從 <strong>0-100</strong> 中選擇一個整數並提交。若時限已到則<strong>預設提交數字 0</strong>。<br><br>
                     3. 回合結算後，如果玩家所提交的數字最接近主持人勾選的統計學指標：
                     <ul>
@@ -91,9 +91,9 @@
                         <li><strong>全距/範圍 (Range)</strong></li>
                     </ul>
                     則<strong>豁免被扣分</strong>，其他未命中的玩家各 <strong>-1 分</strong>。<br><br>
-                    4. ⚠️ <strong>瀑布防串通機制：</strong>如果有多於或等於 <strong>4 個人</strong>提交了「一模一樣」的數字而獲得免扣分資格，則該數字對該指標<strong>宣告無效</strong>！<br>
+                    4. ⚠️ <strong>防串通機制：</strong>如果有多於或等於 <strong>4 個人</strong>提交了「一模一樣」的數字而獲得免扣分資格，則該數字對該指標<strong>宣告無效</strong>！<br>
                     系統將自動<strong>向下遞補</strong>，尋找第二最接近該指標的數字，以此類推。<br><br>
-                    5. 當回合結束後，玩家分數達到 <strong>0 分</strong>，將被淘汰。<br>
+                    5. 當回合結束後，玩家生命值達到 <strong>0 分</strong>，將被淘汰。<br>
                     6. 🏆 遊戲繼續直至<strong>剩下 4 名或以下</strong>的玩家存活，所有生存者同時勝出！
                 </div>
             </div>
@@ -146,7 +146,7 @@
             let p = playersData[name];
             let isEliminated = p.score <= 0;
             let badgeClass = isEliminated ? "player-badge eliminated" : "player-badge alive";
-            let statusText = isEliminated ? "💀 淘汰" : `分數: ${p.score}`;
+            let statusText = isEliminated ? "💀 淘汰" : `生命值: ${p.score}`;
             
             if(!isEliminated) {
                 aliveCount++;
