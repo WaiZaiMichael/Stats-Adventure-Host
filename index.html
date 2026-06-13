@@ -38,15 +38,15 @@
                             <option value="0.8">固定為原著的 0.8</option>
                             <option value="RANDOM">每回合隨機抽出 (0.7, 0.8, 0.9, 1.1, 1.2, 1.3)</option>
                         </select>
-                        <div class="mt-2 fs-5">當前 $a$ 值 = <span id="currentAValueDisplay" class="badge bg-warning text-dark">0.8</span></div>
+                        <div class="mt-2 fs-5">當前 a 值 = <span id="currentAValueDisplay" class="badge bg-warning text-dark">0.8</span></div>
                     </div>
                     <div class="col-md-6 text-start">
                         <label class="form-label fw-bold">額外免扣分條件：</label>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_mean" checked><label class="form-check-label">接近 平均數 (Mean) × a</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_median"><label class="form-check-label">接近 中位數 (Median)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_lq"><label class="form-check-label">接近 下四分位數 (Lower Quartile)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_uq"><label class="form-check-label">接近 上四分位數 (Upper Quartile)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_range"><label class="form-check-label">接近 範圍 (Range)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_mean" checked><label class="form-check-label">最接近 (Mean) × a</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_median"><label class="form-check-label">最接近 中位數 (Median)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_lq"><label class="form-check-label">最接近 下四分位數 (Lower Quartile)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_uq"><label class="form-check-label">最接近 上四分位數 (Upper Quartile)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cond_range"><label class="form-check-label">最接近 範圍 (Range)</label></div>
                     </div>
                 </div>
                 <div class="mt-3">
@@ -81,18 +81,19 @@
                 <h3 class="fw-bold text-success border-bottom pb-2">🎮 遊戲玩法說明</h3>
                 <div class="rule-box my-3">
                     <strong>遊戲規則：</strong><br>
-                    1. 遊戲開始時，所有玩家的分數為 <strong>0 分</strong>。<br>
-                    2. 每回合開始後，玩家需要在 <strong>60 秒</strong>內，從 <strong>0-100</strong> 中選擇一個整數並提交。若時限已到但沒有提交數字，則<strong>預設該玩家提交數字 0</strong>。<br><br>
+                    1. 遊戲開始時，所有玩家的起始分數為 <strong>8 分</strong>。<br>
+                    2. 每回合開始後，玩家需要在 <strong>60 秒</strong>內，從 <strong>0-100</strong> 中選擇一個整數並提交。若時限已到則<strong>預設提交數字 0</strong>。<br><br>
                     3. 回合結算後，如果玩家所提交的數字最接近主持人勾選的統計學指標：
                     <ul>
-                        <li><strong>平均數 × a</strong> (a為0.7至1.3，不含1.0)</li>
+                        <li><strong>平均數 (Mean) × a</strong> (a不含1.0)</li>
                         <li><strong>中位數 (Median)</strong></li>
-                        <li><strong>上 / 下四分位數</strong></li>
+                        <li><strong>上 / 下四分位數 (Upper / Lower Quartile)</strong></li>
                         <li><strong>全距/範圍 (Range)</strong></li>
                     </ul>
-                    則<strong>豁免被扣分</strong>，其他玩家各 <strong>-1 分</strong>。<br><br>
-                    4. ⚠️ <strong>防串通機制：</strong>如果有多於或等於 <strong>4 個人</strong>因為提交了「一模一樣」的數字而獲得免扣分資格，則該數字<strong>宣佈無效</strong>！所有提交該數字的人將**不會**被豁免，直接扣分。<br><br>
-                    5. 當回合結束後，玩家分數達到 <strong>-8 分</strong>，將被淘汰。<br>
+                    則<strong>豁免被扣分</strong>，其他未命中的玩家各 <strong>-1 分</strong>。<br><br>
+                    4. ⚠️ <strong>瀑布防串通機制：</strong>如果有多於或等於 <strong>4 個人</strong>提交了「一模一樣」的數字而獲得免扣分資格，則該數字對該指標<strong>宣告無效</strong>！<br>
+                    系統將自動<strong>向下遞補</strong>，尋找第二最接近該指標的數字，以此類推。<br><br>
+                    5. 當回合結束後，玩家分數達到 <strong>0 分</strong>，將被淘汰。<br>
                     6. 🏆 遊戲繼續直至<strong>剩下 4 名或以下</strong>的玩家存活，所有生存者同時勝出！
                 </div>
             </div>
@@ -100,9 +101,7 @@
             <div class="math-card text-center">
                 <h5 class="fw-bold text-primary">📱 學生手機掃碼加入</h5>
                 <p class="text-muted small">請用手機相機掃描下方 QR Code 進入遊戲會場</p>
-                
                 <img src="qrcode.png" alt="遊戲二維碼" class="img-fluid my-2" style="max-width: 180px; border: 5px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                
                 <div class="mt-2">
                     <small class="text-secondary text-muted">提示：若無法掃碼，請向老師索取連結</small>
                 </div>
@@ -145,7 +144,7 @@
 
         for (let name in playersData) {
             let p = playersData[name];
-            let isEliminated = p.score <= -8;
+            let isEliminated = p.score <= 0;
             let badgeClass = isEliminated ? "player-badge eliminated" : "player-badge alive";
             let statusText = isEliminated ? "💀 淘汰" : `分數: ${p.score}`;
             
@@ -172,7 +171,6 @@
     function startRound() {
         let aSelect = document.getElementById('aValueSelect').value;
         if(aSelect === 'RANDOM') {
-            // 剔除了 1.0，剩下六個可能的值
             const aOptions = [0.7, 0.8, 0.9, 1.1, 1.2, 1.3];
             currentA = aOptions[Math.floor(Math.random() * aOptions.length)];
         } else {
@@ -193,7 +191,7 @@
         db.ref('game/status').set('RUNNING');
 
         for (let name in playersData) {
-            if (playersData[name].score > -8) {
+            if (playersData[name].score > 0) {
                 db.ref(`game/players/${name}/currentMove`).set("");
             }
         }
@@ -211,7 +209,6 @@
         }, 1000);
     }
 
-    // 中學課本標準中位數計算函數
     function calculateMedianOfArray(arr) {
         if (arr.length === 0) return 0;
         let len = arr.length;
@@ -233,17 +230,16 @@
 
         for (let name in playersData) {
             let p = playersData[name];
-            if (p.score > -8) {
+            if (p.score > 0) {
                 let num = parseFloat(p.currentMove);
                 if (isNaN(num)) num = 0;
                 rawNumbers.push(num);
-                activePlayers.push({ name: name, num: num, exempt: false });
+                activePlayers.push({ name: name, num: num });
             }
         }
 
         if (activePlayers.length === 0) return;
 
-        // 數值由小到大排序
         rawNumbers.sort((a, b) => a - b);
         
         let min = rawNumbers[0];
@@ -254,7 +250,6 @@
         let mean = sum / rawNumbers.length;
         let meanTarget = mean * currentA;
 
-        // --- 中學課本四分位數計算法演算法開始 ---
         let median = calculateMedianOfArray(rawNumbers);
         let lowerHalf = [];
         let upperHalf = [];
@@ -262,38 +257,23 @@
         let midIndex = Math.floor(len / 2);
 
         if (len % 2 !== 0) {
-            // 單數：下半部為中位數左邊所有數，上半部為右邊所有數（不含中位數本身）
             lowerHalf = rawNumbers.slice(0, midIndex);
             upperHalf = rawNumbers.slice(midIndex + 1);
         } else {
-            // 雙數：直接對半切開
             lowerHalf = rawNumbers.slice(0, midIndex);
             upperHalf = rawNumbers.slice(midIndex);
         }
 
         let lq = calculateMedianOfArray(lowerHalf);
         let uq = calculateMedianOfArray(upperHalf);
-        // --- 中學課本四分位數計算法演算法結束 ---
 
-        // 根據勾選條件放入標的物件
+        let targetLabels = { mean: "Mean×a", median: "中位數", lq: "下四分位數(LQ)", uq: "上四分位數(UQ)", range: "全距/範圍" };
         let targets = {};
         if(document.getElementById('cond_mean').checked) targets.mean = meanTarget;
         if(document.getElementById('cond_median').checked) targets.median = median;
         if(document.getElementById('cond_lq').checked) targets.lq = lq;
         if(document.getElementById('cond_uq').checked) targets.uq = uq;
         if(document.getElementById('cond_range').checked) targets.range = range;
-
-        let exemptNumbers = [];
-
-        for(let key in targets) {
-            let targetVal = targets[key];
-            let minDiff = Math.min(...activePlayers.map(p => Math.abs(p.num - targetVal)));
-            activePlayers.forEach(p => {
-                if (Math.abs(p.num - targetVal) === minDiff) {
-                    exemptNumbers.push(p.num);
-                }
-            });
-        }
 
         let numberCounts = {};
         activePlayers.forEach(p => {
@@ -306,16 +286,60 @@
         reportHtml += `⚫ Mean: ${mean.toFixed(1)} ${document.getElementById('cond_mean').checked ? `(×${currentA} = ${meanTarget.toFixed(1)})` : '(此指標未啟用)'}<br>`;
         reportHtml += `⚫ 下四分位(LQ): ${lq.toFixed(1)} | 中位數(Med): ${median.toFixed(1)} | 上四分位(UQ): ${uq.toFixed(1)}<br><hr>`;
 
-        activePlayers.forEach(p => {
-            if (exemptNumbers.includes(p.num)) {
-                if (numberCounts[p.num] >= 4) {
-                    db.ref(`game/players/${p.name}/score`).set(playersData[p.name].score - 1);
-                    reportHtml += `❌ <b>${p.name}</b> 雖然接近指標(${p.num})，但因多於4人重複，免扣分無效，扣 1 分！<br>`;
+        // 🔄 關鍵修改：用一個 Object 字典結構來紀錄：每個玩家是因為「哪幾種條件」獲救的
+        // 格式：{ "小明": ["中位數", "下四分位數(LQ) (遞補成功!)"] }
+        let playerExemptReasons = {};
+        let collusionDefeatedPlayers = new Set();
+
+        for (let key in targets) {
+            let targetVal = targets[key];
+            
+            let playersSortedByDiff = [...activePlayers].map(p => {
+                return { name: p.name, num: p.num, diff: Math.abs(p.num - targetVal) };
+            }).sort((a, b) => a.diff - b.diff);
+
+            let loopCount = 0; // 用來追蹤是否為遞補
+
+            while (playersSortedByDiff.length > 0) {
+                let currentMinDiff = playersSortedByDiff[0].diff;
+                let currentClosestGroup = playersSortedByDiff.filter(p => p.diff === currentMinDiff);
+                playersSortedByDiff = playersSortedByDiff.filter(p => p.diff !== currentMinDiff);
+
+                let hasCollusion = currentClosestGroup.some(p => numberCounts[p.num] >= 4);
+
+                if (hasCollusion) {
+                    currentClosestGroup.forEach(p => {
+                        collusionDefeatedPlayers.add(p.name);
+                    });
+                    reportHtml += `⚠️ 數字 ${currentClosestGroup[0].num} 最接近【${targetLabels[key]}】，但因滿 4 人重複觸發防串通！自動向下遞補...<br>`;
+                    loopCount++; // 準備進入下一層遞補
                 } else {
-                    p.exempt = true;
-                    reportHtml += `⭐ <b>${p.name}</b> 提交 ${p.num}，成功免扣分！<br>`;
+                    // 這組玩家成功在此指標勝出，記錄原因
+                    currentClosestGroup.forEach(p => {
+                        if (!playerExemptReasons[p.name]) {
+                            playerExemptReasons[p.name] = [];
+                        }
+                        // 如果 loopCount > 0，代表他是遞補上來的，特別在字尾備註
+                        let reasonText = targetLabels[key] + (loopCount > 0 ? " <b class='text-success'>(遞補成功!)</b>" : "");
+                        playerExemptReasons[p.name].push(reasonText);
+                    });
+                    break;
                 }
+            }
+        }
+
+        // 根據剛才搜集好的特殊理由字典，寫入大螢幕與扣分
+        activePlayers.forEach(p => {
+            if (playerExemptReasons[p.name] && playerExemptReasons[p.name].length > 0) {
+                // 成功免疫！串接他命中的所有指標條件
+                let reasonsStr = playerExemptReasons[p.name].join("、");
+                reportHtml += `⭐ <b>${p.name}</b> 提交 ${p.num}，最接近 <b>[${reasonsStr}]</b>，成功免扣分！<br>`;
+            } else if (collusionDefeatedPlayers.has(p.name)) {
+                // 因串通被制裁，扣 1 分
+                db.ref(`game/players/${p.name}/score`).set(playersData[p.name].score - 1);
+                reportHtml += `❌ <b>${p.name}</b> (${p.num}) 意圖串通或受到波及，免扣分失效，扣 1 分！<br>`;
             } else {
+                // 純粹沒猜中的人，扣 1 分
                 db.ref(`game/players/${p.name}/score`).set(playersData[p.name].score - 1);
             }
         });
@@ -324,6 +348,7 @@
         drawBoxPlot(min, lq, median, uq, max, mean);
     }
 
+    // （其餘 BoxPlot 和重設函數保持不變）
     function drawBoxPlot(min, q1, med, q3, max, mean) {
         if (chartInstance) chartInstance.destroy();
         const ctx = document.getElementById('boxplotCanvas').getContext('2d');
@@ -340,23 +365,14 @@
                     outlierColor: '#999999',
                     padding: 10,
                     itemRadius: 3,
-                    data: [{
-                        min: min,
-                        q1: q1,
-                        median: med,
-                        q3: q3,
-                        max: max,
-                        mean: mean
-                    }]
+                    data: [{ min: min, q1: q1, median: med, q3: q3, max: max, mean: mean }]
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 indexAxis: 'y',
-                scales: {
-                    x: { min: 0, max: 100, title: { display: true, text: '數字 (0 - 100)' } }
-                }
+                scales: { x: { min: 0, max: 100, title: { display: true, text: '數字 (0 - 100)' } } }
             }
         });
     }
